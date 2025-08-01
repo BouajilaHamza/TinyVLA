@@ -10,7 +10,7 @@ from llava_pythia.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_T
 from llava_pythia.model.language_model.pythia.configuration_llava_pythia import LlavaPythiaConfig
 from llava_pythia.model.language_model.pythia.llava_pythia import LlavaPythiaForCausalLM
 
-def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="cuda", device="cuda"):
+def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map=None, device=None):
     """
     Loads a pretrained model with optional quantization and device mapping.
 
@@ -20,8 +20,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         - model_name (str): Name of the model to load.
         - load_8bit (bool): Whether to load the model in 8-bit precision.
         - load_4bit (bool): Whether to load the model in 4-bit precision.
-        - device_map (str): Device map for model loading, default is "cuda".
-        - device (str): Device to load the model onto, default is "cuda".
+        - device_map (str): Device map for model loading. If None, will auto-detect.
+        - device (str): Device to load the model onto. If None, will auto-detect.
 
     Returns:
         - tokenizer: The tokenizer associated with the model.
@@ -29,19 +29,35 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         - image_processor: The image processor if applicable.
         - context_len (int): The context length of the model.
     """
+    # Auto-detect device and set appropriate defaults
+    has_cuda = torch.cuda.is_available()
+    if device is None:
+        device = "cuda" if has_cuda else "cpu"
+    if device_map is None:
+        device_map = "auto" if has_cuda else {"": "cpu"}
+    
+    print(f"Using device: {device}, device_map: {device_map}")
+    
     kwargs = {"device_map": device_map}
-    if load_8bit:
-        kwargs['load_in_8bit'] = True
-    elif load_4bit:
-        kwargs['load_in_4bit'] = True
-        kwargs['quantization_config'] = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type='nf4'
-        )
+    # Only enable quantization if we have CUDA
+    if has_cuda:
+        if load_8bit:
+            kwargs['load_in_8bit'] = True
+        elif load_4bit:
+            kwargs['load_in_4bit'] = True
+            kwargs['quantization_config'] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type='nf4'
+            )
+        else:
+            kwargs['torch_dtype'] = torch.float16
     else:
-        kwargs['torch_dtype'] = torch.float16
+        # For CPU, use float32 and disable quantization
+        kwargs['torch_dtype'] = torch.float32
+        kwargs['low_cpu_mem_usage'] = True
+        print("Running on CPU: Disabling quantization and using float32")
 
     if 'pythia' in model_name.lower():
         # Load LLaVA-Phi model
