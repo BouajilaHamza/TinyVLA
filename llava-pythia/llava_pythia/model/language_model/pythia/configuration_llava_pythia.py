@@ -181,9 +181,112 @@ class LlavaPythiaConfig(GPTNeoXConfig):
             self.vision_config = DEFAULT_VISUAL_CONFIG
         else:
             self.vision_config = vision_config
-
+            
+        # Action head configurations
+        self.action_head = kwargs.pop("action_head", "act")
+        self.action_dim = kwargs.pop("action_dim", 7)  # Default to 7 for Franka arm
+        self.state_dim = kwargs.pop("state_dim", 14)   # Default state dimension
+        self.chunk_size = kwargs.pop("chunk_size", 6)  # Default chunk size for diffusion
+        
+        # ACT head specific config
+        act_config = kwargs.pop("act", {})
+        self.act = {
+            "act": {
+                "hidden_dim": act_config.get("hidden_dim", 256),
+                "ff_feedforward_dim": act_config.get("ff_feedforward_dim", 256 * 4),
+                "num_layers": act_config.get("num_layers", 4),
+                "num_queries": act_config.get("num_queries", 6),
+                "kl_weight": act_config.get("kl_weight", 10),
+                "hidden_dropout": act_config.get("hidden_dropout", 0.1),
+                "attention_dropout": act_config.get("attention_dropout", 0.1),
+                "dropout": act_config.get("dropout", 0.1),
+                "num_heads": act_config.get("num_heads", 8),
+                "nheads": act_config.get("num_heads", 8),  # Alias for nheads
+                "activation_dropout": act_config.get("activation_dropout", 0.0),
+                "backbone": "resnet18",  # Default backbone
+                "enc_layers": 4,  # Number of encoder layers
+                "dec_layers": 4,  # Number of decoder layers
+                "dim_feedforward": 2048,  # Dimension of feedforward layers
+                "pre_norm": False,  # Whether to use pre-norm
+                "vq_class": 16,  # Number of VQ classes
+                "vq_dim": 256,  # Dimension of VQ embeddings
+                "vq_commit": 0.25,  # VQ commit loss weight
+                "shared_codebook": True,  # Whether to share codebook across layers
+                "shared_encoder": True,  # Whether to share encoder across layers
+                "vq_kl_weight": 0.0,  # KL weight for VQ
+                "vq_decay": 0.99,  # Decay for VQ
+                "vq_ema": True,  # Whether to use EMA for VQ
+                "vq_ema_decay": 0.99,  # EMA decay for VQ
+                "vq_ema_eps": 1e-5,  # Epsilon for EMA
+                "chunk_size": 6,  # Number of action chunks
+                "horizon": 6,  # Planning horizon
+                "num_queries": 6,  # Number of action queries
+                "num_queries_per_policy": 1,  # Queries per policy
+                "num_policies": 1,  # Number of policies
+                "temperature": 1.0,  # Temperature for sampling
+                "use_goal": False,  # Whether to use goal conditioning
+                "goal_conditioned_training": False,  # Whether to use goal conditioning during training
+                "use_state": True,  # Whether to use state conditioning
+                "state_dim": 14,  # Dimension of state space
+                "action_dim": 7,  # Dimension of action space
+                "hidden_dim": 256,  # Hidden dimension
+                "n_embd": 256,  # Embedding dimension
+                "n_layer": 4,  # Number of layers
+                "n_head": 8,  # Number of attention heads
+                "n_inner": 2048,  # Inner dimension of feedforward layers
+                "activation_function": "gelu_new",  # Activation function
+                "n_positions": 2048,  # Maximum sequence length
+                "resid_pdrop": 0.1,  # Dropout probability for residual connections
+                "embd_pdrop": 0.1,  # Dropout probability for embeddings
+                "attn_pdrop": 0.1,  # Dropout probability for attention
+                "layer_norm_epsilon": 1e-5,  # Epsilon for layer normalization
+                "initializer_range": 0.02,  # Range for parameter initialization
+                "scale_attn_weights": True,  # Whether to scale attention weights
+                "use_cache": True,  # Whether to use caching for generation
+                "bos_token_id": 0,  # Beginning of sequence token ID
+                "eos_token_id": 2,  # End of sequence token ID
+                "tie_word_embeddings": False,  # Whether to tie input and output embeddings
+                "camera_names": ["agentview"],  # List of camera names
+                "camera_feature_dim": 512,  # Dimension of camera features
+                "camera_num_layers": 2,  # Number of layers for camera feature processing
+                "camera_num_heads": 8,  # Number of attention heads for camera features
+                "camera_dropout": 0.1,  # Dropout for camera feature processing
+                "use_camera_embeddings": True,  # Whether to use camera embeddings
+                "camera_embedding_dim": 64,  # Dimension of camera embeddings
+                "camera_embedding_type": "learned",  # Type of camera embeddings
+                "use_camera_transformer": True,  # Whether to use transformer for camera features
+                "camera_transformer_layers": 2,  # Number of transformer layers for camera features
+                "camera_transformer_heads": 8,  # Number of attention heads for camera transformer
+                "camera_transformer_dim_feedforward": 1024,  # Feedforward dimension for camera transformer
+            }
+        }
+        
+        # Diffusion model config
+        self.diffusion = kwargs.pop("diffusion", {
+            "num_train_timesteps": 100,
+            "beta_schedule": "squaredcos_cap_v2",
+            "clip_sample": True,
+            "set_alpha_to_one": True,
+            "steps_offset": 0,
+            "prediction_type": "epsilon"
+        })
+        
         self.concat = "None"
         super().__init__(**kwargs)
+        
+    def to_dict(self):
+        """Serializes this instance to a Python dictionary."""
+        output = super().to_dict()
+        output.update({
+            "action_head": self.action_head,
+            "action_dim": self.action_dim,
+            "state_dim": self.state_dim,
+            "chunk_size": self.chunk_size,
+            "act": self.act,
+            "diffusion": self.diffusion,
+        })
+        return output
+        
 
 
 if __name__ == "__main__":

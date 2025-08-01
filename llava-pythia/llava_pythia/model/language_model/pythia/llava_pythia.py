@@ -35,11 +35,10 @@ class LlavaPythiaForCausalLM(GPTNeoXPreTrainedModel, LlavaMetaForCausalLM):
     def __init__(self, config):
         super(GPTNeoXPreTrainedModel, self).__init__(config)
         self.gpt_neox = LLavaPythiaModel(config)
-
-        self.head_type = config.action_head_type
+        self.head_type = config.action_head
         self.visual_concat = config.concat
         self.action_dim = config.action_dim
-        if config.action_head_type == 'act':
+        if config.action_head == 'act':
             self.embed_out = build_ACT_head(config.act['act'])
             middle_dim = int(max(config.hidden_size, config.act['act']['hidden_dim']) / 2)
             self.proj_to_action = nn.Sequential(

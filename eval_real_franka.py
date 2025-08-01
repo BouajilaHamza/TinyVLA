@@ -109,20 +109,21 @@ class llava_pythia_act_policy:
     """
     def __init__(self, policy_config, data_args=None):
         super(llava_pythia_act_policy).__init__()
-        self.load_policy(policy_config)
+        self._load_policy(policy_config)
         self.data_args = data_args
 
-    def load_policy(self, policy_config):
+    def _load_policy(self, policy_config):
         self.policy_config = policy_config
         # self.conv = conv_templates[policy_config['conv_mode']].copy()
         model_base = policy_config["model_base"] if policy_config[
             'enable_lora'] else None
         model_name = get_model_name_from_path(policy_config['model_path'])
         model_path = policy_config["model_path"]
-
+        print("loading model", "-" * 100)
         self.tokenizer, self.policy, self.image_processor, self.context_len = load_pretrained_model(model_path, model_base,
                                                                                                     model_name, False,
                                                                                                     False)
+        print('/'.join(model_path.split('/')[:-1]))
         self.config = LlavaPythiaConfig.from_pretrained('/'.join(model_path.split('/')[:-1]), trust_remote_code=True)
 
     def process_batch_to_llava(self, curr_image, robo_state, raw_lang):
@@ -223,7 +224,7 @@ def eval_bc(policy, deploy_env, policy_config, save_episode=True, num_rollouts=1
     """
     assert raw_lang is not None, "raw lang is None!!!!!!"
     set_seed(0)
-
+    print(policy_config)
     if policy_config["action_head"] == 'act':
         rand_crop_resize = False
         temporal_agg = True
@@ -385,9 +386,9 @@ if __name__ == '__main__':
     #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hyper parameters<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     action_head = 'droid_diffusion' # specify the action head type
     policy_config = {
-        "model_path": f"/path/to/trained/VLA", # mainly includes the lora weights
-        "model_base": f"/path/to/pretrained/VLM", # used for lora merge weights
-        "enable_lora": True,
+        "model_path": "./Llava-Pythia-400M", # Local path to the downloaded model
+        "model_base": "./Llava-Pythia-400M", # Using the same path as base for now
+        "enable_lora": False,
         "conv_mode": "pythia",
         "action_head": action_head,
     }
@@ -398,7 +399,7 @@ if __name__ == '__main__':
 
     # make policy
     policy = llava_pythia_act_policy(policy_config)
-
+    print("policy loaded")
     ############################################################################################################
     # This is your own robot environment, you should init a new env object
     deploy_env = None

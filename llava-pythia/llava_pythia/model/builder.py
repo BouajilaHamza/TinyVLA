@@ -7,7 +7,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAn
 import torch
 from llava_pythia.model import *
 from llava_pythia.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
-
+from llava_pythia.model.language_model.pythia.configuration_llava_pythia import LlavaPythiaConfig
+from llava_pythia.model.language_model.pythia.llava_pythia import LlavaPythiaForCausalLM
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="cuda", device="cuda"):
     """
@@ -47,9 +48,10 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         if 'lora' in model_name.lower() and model_base is None:
             warnings.warn('There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument.')
         if 'lora' in model_name.lower() and model_base is not None:
-            
+            print("model_path: ", model_path)
             path = model_path.split('/')[0:-1]
             root_path = '/'.join(path)
+            print(root_path)
             lora_cfg_pretrained = AutoConfig.from_pretrained(root_path)
             config = lora_cfg_pretrained
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True) # default use_fast=False
@@ -107,12 +109,15 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         else:
             print("load llaVA-Pythia MLLM!!!")
             config = LlavaPythiaConfig.from_pretrained(model_path, trust_remote_code=True)
+            print("config loaded")
             tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+            print("tokenizer loaded")
             model = LlavaPythiaForCausalLM.from_pretrained(
                 model_path,
                 config=config,
                 use_safetensors=True,
-                **kwargs).to("cuda")
+                **kwargs).to(device_map)
+            print("model loaded")
     else:
         # Load language model
         if model_base is not None:
